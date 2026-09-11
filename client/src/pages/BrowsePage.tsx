@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
 import { FilterBar } from '../components/FilterBar';
 import { MovieGrid } from '../components/MovieGrid';
@@ -8,15 +8,16 @@ import { StateMessage } from '../components/StateMessage';
 import { useDebounce } from '../hooks/useDebounce';
 import { useMovies } from '../hooks/useMovies';
 import { toApiError } from '../lib/api';
+import { recallScroll, rememberBrowseUrl, rememberScroll } from '../lib/browseState';
 
 export function BrowsePage() {
   /**
-   * The URL is the single source of truth for search, genre, sort and scroll
-   * position. That is what makes the back button work, makes a filtered view
-   * shareable as a link, and lets the detail page return the user to exactly
-   * the results they left.
+   * The URL is the single source of truth for search, genre and sort. That is
+   * what makes the back button work, makes a filtered view shareable as a link,
+   * and lets the detail page return the user to exactly the results they left.
    */
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
 
   const q = searchParams.get('q') ?? '';
   const genreParam = searchParams.get('genre');
@@ -68,6 +69,52 @@ export function BrowsePage() {
   const movies = data?.pages.flatMap((page) => page.items) ?? [];
   const totalResults = data?.pages[0]?.totalResults ?? 0;
   const sortIsPageScoped = data?.pages[0]?.meta.sortScope === 'page';
+
+  /**
+   * Remember this exact filtered URL so the "Browse" link in the nav brings the
+   * user back here, rather than resetting them to an unfiltered view.
+   */
+  useEffect(() => {
+    rememberBrowseUrl(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+
+  /**
+   * Scroll persistence, keyed by the query string so each distinct filter set
+   * remembers its own position. Writes are throttled with requestAnimationFrame
+   * because scroll fires far more often than we need to record.
+   */
+  useEffect(() => {
+    let queued = false;
+
+    function onScroll() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        rememberScroll(location.search, window.scrollY);
+        queued = false;
+      });
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [location.search]);
+
+  /**
+   * Restore the saved position once results are actually on screen — scrolling
+   * before the grid has height silently does nothing. Guarded by a ref so it
+   * runs once per filter set and never fights the user mid-scroll.
+   */
+  const restoredFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (movies.length === 0) return;
+    if (restoredFor.current === location.search) return;
+
+    restoredFor.current = location.search;
+    const saved = recallScroll(location.search);
+    if (saved && saved > 0) window.scrollTo({ top: saved, behavior: 'instant' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movies.length, location.search]);
 
   /**
    * Infinite scroll via IntersectionObserver rather than a scroll listener —

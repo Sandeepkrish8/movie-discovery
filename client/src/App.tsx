@@ -2,6 +2,7 @@ import { Link, NavLink, Route, Routes } from 'react-router-dom';
 
 import { StateMessage } from './components/StateMessage';
 import { useWishlist } from './hooks/useWishlist';
+import { lastBrowseUrl } from './lib/browseState';
 import { BrowsePage } from './pages/BrowsePage';
 import { MovieDetailPage } from './pages/MovieDetailPage';
 import { WishlistPage } from './pages/WishlistPage';
@@ -26,6 +27,21 @@ function WishlistNavLink() {
   );
 }
 
+/**
+ * The Browse link returns the user to their last filtered view, not a bare "/".
+ * Going Browse -> Wishlist -> Browse otherwise silently discards the genre,
+ * sort and search they had set, which is exactly the "losing their context"
+ * the brief asks us to avoid. NavLink still matches active state on pathname,
+ * so the query string does not interfere with highlighting.
+ */
+function BrowseNavLink() {
+  return (
+    <NavLink to={lastBrowseUrl()} end className={navClass}>
+      Browse
+    </NavLink>
+  );
+}
+
 export default function App() {
   return (
     <div className="min-h-screen">
@@ -36,9 +52,7 @@ export default function App() {
           </Link>
 
           <div className="ml-auto flex items-center gap-5">
-            <NavLink to="/" end className={navClass}>
-              Browse
-            </NavLink>
+            <BrowseNavLink />
             <WishlistNavLink />
           </div>
         </div>
