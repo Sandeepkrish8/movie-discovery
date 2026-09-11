@@ -14,12 +14,19 @@ export const TTL = {
 } as const;
 
 /**
+ * lru-cache requires stored values to be non-nullable — `NonNullable<unknown>`
+ * resolves to `{}`, which every object and array we cache satisfies while still
+ * excluding null and undefined.
+ */
+type CacheValue = NonNullable<unknown>;
+
+/**
  * allowStale is enabled on the cache but NOT used by default reads.
  * Normal reads pass allowStale:false; only the error path opts into stale data.
  * That gives us stale-while-error without accidentally serving expired data
  * on the happy path.
  */
-const store = new LRUCache<string, unknown>({
+const store = new LRUCache<string, CacheValue>({
   max: 500,
   ttl: TTL.SEARCH,
   allowStale: true,
@@ -32,7 +39,7 @@ const store = new LRUCache<string, unknown>({
  * identical upstream calls. With it, the first call is shared and the other
  * nine await the same promise.
  */
-const inFlight = new Map<string, Promise<unknown>>();
+const inFlight = new Map<string, Promise<CacheValue>>();
 
 /**
  * Read-through cache with request de-duplication and stale-on-error fallback.
@@ -43,7 +50,7 @@ const inFlight = new Map<string, Promise<unknown>>();
  *   3. Otherwise                 -> call upstream, cache the result
  *   4. Upstream failed but we have an expired copy -> serve it rather than error
  */
-export async function cached<T>(
+export async function cached<T extends CacheValue>(
   key: string,
   ttl: number,
   loader: () => Promise<T>,
@@ -72,7 +79,7 @@ export async function cached<T>(
     });
 
   inFlight.set(key, request);
-  return request as Promise<T>;
+  return request;
 }
 
 /**
