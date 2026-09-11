@@ -17,6 +17,15 @@ const envSchema = z.object({
   // Optional until the wishlist lands on Day 3.
   MONGODB_URI: z.string().optional(),
 
+  /**
+   * Comma-separated DNS servers, e.g. "1.1.1.1,8.8.8.8".
+   *
+   * Only needed on networks whose resolver refuses SRV lookups — mongodb+srv://
+   * cannot resolve without them. Left empty in production, where the platform's
+   * resolver works normally.
+   */
+  DNS_SERVERS: z.string().optional(),
+
   CLIENT_ORIGIN: z.string().default('http://localhost:5173'),
 
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
