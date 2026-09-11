@@ -39,9 +39,33 @@ if (env.DNS_SERVERS) {
 
 const app = express();
 
+/**
+ * CORS allowlist.
+ *
+ * CLIENT_ORIGIN is a comma-separated list, because the same API serves the local
+ * dev server and the deployed frontend — a single hardcoded origin means one of
+ * them is always broken. "*" is accepted as an explicit opt-out for debugging,
+ * but the deployed config names its origins.
+ *
+ * Requests with no Origin header (curl, uptime pings, server-to-server) are
+ * allowed: CORS is a browser policy, and blocking them would break the health
+ * check without adding security.
+ */
+const allowedOrigins = env.CLIENT_ORIGIN.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: env.CLIENT_ORIGIN,
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // Not an error — just no CORS headers, so the browser blocks it.
+      console.warn(`[cors] rejected origin: ${origin}`);
+      return callback(null, false);
+    },
     allowedHeaders: ['Content-Type', 'x-device-id'],
   }),
 );
