@@ -1,8 +1,10 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
+import { ErrorIllustration, OfflineIllustration } from '../components/illustrations';
 import { StateMessage } from '../components/StateMessage';
 import { WishlistButton } from '../components/WishlistButton';
 import { useMovieDetail } from '../hooks/useMovies';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { toApiError } from '../lib/api';
 
 function formatRuntime(minutes: number | null): string | null {
@@ -48,6 +50,7 @@ export function MovieDetailPage() {
 
   const movieId = Number(id);
   const { data: movie, isLoading, isError, error, refetch } = useMovieDetail(movieId);
+  const online = useOnlineStatus();
 
   /**
    * MovieCard passes the browse URL it was clicked from. Preferring that over
@@ -91,12 +94,21 @@ export function MovieDetailPage() {
         >
           ← Back to results
         </button>
-        <StateMessage
-          icon="!"
-          title="Couldn't load this movie"
-          description={error ? toApiError(error).message : 'The movie could not be found.'}
-          onRetry={() => void refetch()}
-        />
+        {online ? (
+          <StateMessage
+            illustration={<ErrorIllustration />}
+            title="Couldn't load this movie"
+            description={error ? toApiError(error).message : 'The movie could not be found.'}
+            onRetry={() => void refetch()}
+          />
+        ) : (
+          <StateMessage
+            illustration={<OfflineIllustration />}
+            title="You're offline"
+            description="This page needs a connection. It will load as soon as you're back online."
+            onRetry={() => void refetch()}
+          />
+        )}
       </div>
     );
   }

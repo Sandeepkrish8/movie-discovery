@@ -2,11 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 
 import { FilterBar } from '../components/FilterBar';
+import {
+  ErrorIllustration,
+  OfflineIllustration,
+  SearchEmptyIllustration,
+} from '../components/illustrations';
 import { MovieGrid } from '../components/MovieGrid';
 import { SkeletonGrid } from '../components/SkeletonCard';
 import { StateMessage } from '../components/StateMessage';
 import { useDebounce } from '../hooks/useDebounce';
 import { useMovies } from '../hooks/useMovies';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { toApiError } from '../lib/api';
 import { recallScroll, rememberBrowseUrl, rememberScroll } from '../lib/browseState';
 
@@ -19,6 +25,7 @@ export function BrowsePage() {
    */
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
+  const online = useOnlineStatus();
 
   const q = searchParams.get('q') ?? '';
   const genreParam = searchParams.get('genre');
@@ -189,17 +196,32 @@ export function BrowsePage() {
 
       {isLoading && <SkeletonGrid />}
 
-      {isError && (
-        <StateMessage
-          icon="!"
-          title="Couldn't load movies"
-          description={toApiError(error).message}
-          onRetry={() => void refetch()}
-        />
-      )}
+      {/*
+        Offline and server-error are different problems with different next
+        actions, so they get different words and different illustrations.
+        navigator.onLine is only trustworthy when false, which is exactly the
+        case we need it for.
+      */}
+      {isError &&
+        (online ? (
+          <StateMessage
+            illustration={<ErrorIllustration />}
+            title="Couldn't load movies"
+            description={toApiError(error).message}
+            onRetry={() => void refetch()}
+          />
+        ) : (
+          <StateMessage
+            illustration={<OfflineIllustration />}
+            title="You're offline"
+            description="Check your connection. Results will load again automatically once you're back online."
+            onRetry={() => void refetch()}
+          />
+        ))}
 
       {!isLoading && !isError && movies.length === 0 && (
         <StateMessage
+          illustration={<SearchEmptyIllustration />}
           title="No movies found"
           description={
             hasActiveFilters
@@ -207,6 +229,20 @@ export function BrowsePage() {
                 ? `Nothing matched "${q}". Try a different title, or widen the year filter.`
                 : 'No movies match these filters. Try a different genre or year.'
               : 'No movies came back. Please try again.'
+          }
+          action={
+            hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setInput('');
+                  setSearchParams(new URLSearchParams());
+                }}
+                className="rounded-lg border border-neutral-600 px-4 py-2 text-sm text-neutral-200 transition hover:border-neutral-400 hover:text-white"
+              >
+                Clear filters
+              </button>
+            ) : undefined
           }
         />
       )}

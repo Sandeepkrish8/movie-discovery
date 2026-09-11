@@ -1,14 +1,21 @@
 import { Link } from 'react-router-dom';
 
+import {
+  ErrorIllustration,
+  OfflineIllustration,
+  WishlistEmptyIllustration,
+} from '../components/illustrations';
 import { MovieGrid } from '../components/MovieGrid';
 import { SkeletonGrid } from '../components/SkeletonCard';
 import { StateMessage } from '../components/StateMessage';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { useWishlist } from '../hooks/useWishlist';
 import { toApiError } from '../lib/api';
 import type { MovieSummary } from '../types';
 
 export function WishlistPage() {
   const { data: items, isLoading, isError, error, refetch } = useWishlist();
+  const online = useOnlineStatus();
 
   /**
    * Wishlist rows are stored snapshots, so they render straight from our own
@@ -39,31 +46,37 @@ export function WishlistPage() {
 
       {isLoading && <SkeletonGrid count={6} />}
 
-      {isError && (
-        <StateMessage
-          icon="!"
-          title="Couldn't load your wishlist"
-          description={toApiError(error).message}
-          onRetry={() => void refetch()}
-        />
-      )}
+      {isError &&
+        (online ? (
+          <StateMessage
+            illustration={<ErrorIllustration />}
+            title="Couldn't load your wishlist"
+            description={toApiError(error).message}
+            onRetry={() => void refetch()}
+          />
+        ) : (
+          <StateMessage
+            illustration={<OfflineIllustration />}
+            title="You're offline"
+            description="Your saved movies live on the server, so they'll be back as soon as you reconnect."
+            onRetry={() => void refetch()}
+          />
+        ))}
 
       {!isLoading && !isError && movies.length === 0 && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 px-6 py-16 text-center">
-          <div className="mb-4 text-3xl text-neutral-600" aria-hidden="true">
-            ♡
-          </div>
-          <h2 className="text-base font-medium text-neutral-200">Nothing saved yet</h2>
-          <p className="mx-auto mt-1.5 max-w-sm text-sm text-neutral-400">
-            Hover any poster and tap the heart to save it for later.
-          </p>
-          <Link
-            to="/"
-            className="mt-5 inline-block rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-neutral-950 transition hover:bg-amber-400"
-          >
-            Browse movies
-          </Link>
-        </div>
+        <StateMessage
+          illustration={<WishlistEmptyIllustration />}
+          title="Nothing saved yet"
+          description="Tap the heart on any poster to save it for later. Your list stays on this device, even after closing the app."
+          action={
+            <Link
+              to="/"
+              className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-neutral-950 transition hover:bg-amber-400"
+            >
+              Browse movies
+            </Link>
+          }
+        />
       )}
 
       {movies.length > 0 && <MovieGrid movies={movies} />}

@@ -1,6 +1,8 @@
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 
+import { SearchEmptyIllustration } from './components/illustrations';
 import { StateMessage } from './components/StateMessage';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useWishlist } from './hooks/useWishlist';
 import { lastBrowseUrl } from './lib/browseState';
 import { BrowsePage } from './pages/BrowsePage';
@@ -42,7 +44,27 @@ function BrowseNavLink() {
   );
 }
 
+/**
+ * A persistent strip rather than a dismissible toast: while the connection is
+ * down, every action in the app will fail, and the user should be able to see
+ * why at any moment without having caught a notification.
+ */
+function OfflineBanner() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-300"
+    >
+      You&rsquo;re offline. Anything already loaded still works — new results will appear when you
+      reconnect.
+    </div>
+  );
+}
+
 export default function App() {
+  const online = useOnlineStatus();
+
   return (
     <div className="min-h-screen">
       <nav className="sticky top-0 z-20 border-b border-neutral-800 bg-[#0a0a0b]/85 backdrop-blur">
@@ -58,6 +80,8 @@ export default function App() {
         </div>
       </nav>
 
+      {!online && <OfflineBanner />}
+
       <main>
         <Routes>
           <Route path="/" element={<BrowsePage />} />
@@ -68,8 +92,17 @@ export default function App() {
             element={
               <div className="mx-auto max-w-3xl px-4 py-16">
                 <StateMessage
+                  illustration={<SearchEmptyIllustration />}
                   title="Page not found"
-                  description="That page doesn't exist. Head back to browsing."
+                  description="That page doesn't exist — the link may be out of date."
+                  action={
+                    <Link
+                      to="/"
+                      className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-neutral-950 transition hover:bg-amber-400"
+                    >
+                      Back to browsing
+                    </Link>
+                  }
                 />
               </div>
             }
