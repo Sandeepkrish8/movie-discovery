@@ -55,11 +55,30 @@ const allowedOrigins = env.CLIENT_ORIGIN.split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+/**
+ * Entries may contain a `*` wildcard, because Vercel gives every deployment its
+ * own hostname — an exact-match list can never keep up with preview builds.
+ *
+ * The wildcard is deliberately narrow: it matches one hostname label, not any
+ * character, so "https://*-my-team.vercel.app" admits this project's previews
+ * but not "https://evil.com/?x=-my-team.vercel.app".
+ */
+function originMatcher(pattern: string): (origin: string) => boolean {
+  if (!pattern.includes('*')) return (origin) => origin === pattern;
+
+  const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`^${escaped.replace(/\\\*/g, '[a-z0-9-]+')}$`, 'i');
+  return (origin) => regex.test(origin);
+}
+
+const originMatchers = allowedOrigins.map(originMatcher);
+
 app.use(
   cors({
     origin(origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes('*')) return callback(null, true);
+      if (originMatchers.some((matches) => matches(origin))) {
         return callback(null, true);
       }
       // Not an error — just no CORS headers, so the browser blocks it.
