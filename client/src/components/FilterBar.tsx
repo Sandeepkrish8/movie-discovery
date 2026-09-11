@@ -17,9 +17,14 @@ interface FilterBarProps {
   disabled?: boolean;
 }
 
+/**
+ * w-full on mobile, auto width from `sm` up. Without the explicit width the
+ * selects size to their longest option ("Science Fiction", "Most popular") and
+ * wrap raggedly on a narrow phone.
+ */
 const selectClass =
-  'rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 ' +
-  'transition hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 ' +
+  'transition hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto';
 
 /** Earliest year offered. Cinema before this is a rounding error in TMDB. */
 const EARLIEST_YEAR = 1950;
@@ -50,60 +55,69 @@ export function FilterBar({
   }, []);
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <label className="sr-only" htmlFor="genre">
-        Genre
-      </label>
-      <select
-        id="genre"
-        className={selectClass}
-        value={genre ?? ''}
-        disabled={disabled || isLoading || genreIsUnavailable}
-        title={genreIsUnavailable ? 'Genre filtering is unavailable while searching' : undefined}
-        onChange={(e) => onGenreChange(e.target.value ? Number(e.target.value) : undefined)}
-      >
-        <option value="">All genres</option>
-        {genres?.map((g) => (
-          <option key={g.id} value={g.id}>
-            {g.name}
-          </option>
-        ))}
-      </select>
+    // Two columns on a phone (genre + year side by side, sort spanning below),
+    // a single flex row from tablet up. A grid gives predictable alignment at
+    // narrow widths where flex-wrap alone leaves uneven gaps.
+    <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
+      <div>
+        <label className="sr-only" htmlFor="genre">
+          Genre
+        </label>
+        <select
+          id="genre"
+          className={selectClass}
+          value={genre ?? ''}
+          disabled={disabled || isLoading || genreIsUnavailable}
+          title={genreIsUnavailable ? 'Genre filtering is unavailable while searching' : undefined}
+          onChange={(e) => onGenreChange(e.target.value ? Number(e.target.value) : undefined)}
+        >
+          <option value="">All genres</option>
+          {genres?.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <label className="sr-only" htmlFor="year">
-        Release year
-      </label>
-      <select
-        id="year"
-        className={selectClass}
-        value={year ?? ''}
-        disabled={disabled}
-        onChange={(e) => onYearChange(e.target.value ? Number(e.target.value) : undefined)}
-      >
-        <option value="">All years</option>
-        {years.map((y) => (
-          <option key={y} value={y}>
-            {y}
-          </option>
-        ))}
-      </select>
+      <div>
+        <label className="sr-only" htmlFor="year">
+          Release year
+        </label>
+        <select
+          id="year"
+          className={selectClass}
+          value={year ?? ''}
+          disabled={disabled}
+          onChange={(e) => onYearChange(e.target.value ? Number(e.target.value) : undefined)}
+        >
+          <option value="">All years</option>
+          {years.map((y) => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <label className="sr-only" htmlFor="sort">
-        Sort by
-      </label>
-      <select
-        id="sort"
-        className={selectClass}
-        value={sort}
-        disabled={disabled}
-        onChange={(e) => onSortChange(e.target.value)}
-      >
-        {SORT_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div className="col-span-2 sm:col-span-1">
+        <label className="sr-only" htmlFor="sort">
+          Sort by
+        </label>
+        <select
+          id="sort"
+          className={selectClass}
+          value={sort}
+          disabled={disabled}
+          onChange={(e) => onSortChange(e.target.value)}
+        >
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/*
         Honesty in the UI: TMDB's search endpoint ignores sort_by and
@@ -112,7 +126,7 @@ export function FilterBar({
         silently pretending the control did something it didn't.
       */}
       {sortIsPageScoped && (
-        <p className="text-xs text-neutral-500">
+        <p className="col-span-2 text-xs text-neutral-500 sm:col-span-1">
           Sorting applies within search results
           {genreIsUnavailable && '; genre filtering is unavailable while searching'}
         </p>

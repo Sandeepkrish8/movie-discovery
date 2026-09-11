@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import type { MovieSummary } from '../types';
@@ -6,15 +7,33 @@ import { WishlistButton } from './WishlistButton';
 /**
  * Edge cases handled here, all named in section 4 of the brief:
  *
- *  - Posters have inconsistent dimensions -> a fixed 2:3 box with object-cover.
+ *  - Posters have inconsistent dimensions -> a fixed 2:3 box with object-cover,
+ *                                            which also reserves layout space
+ *                                            so the grid never shifts as images
+ *                                            arrive.
  *  - Some movies have no poster at all    -> a styled placeholder, not a broken
  *                                            image icon.
  *  - Titles run long                      -> clamped to two lines, full text in
  *                                            the title attribute on hover.
  *  - Unrated films                        -> "NR" instead of a misleading 0.0.
+ *  - Slow networks                        -> posters fade in when decoded, so a
+ *                                            slow connection reads as loading
+ *                                            rather than as a broken image.
  */
 export function MovieCard({ movie }: { movie: MovieSummary }) {
   const location = useLocation();
+
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  /**
+   * A cached image can finish loading before React attaches the onLoad handler,
+   * which would leave it stuck at opacity 0. Checking `complete` on mount
+   * covers that case.
+   */
+  useEffect(() => {
+    if (imageRef.current?.complete) setLoaded(true);
+  }, []);
 
   return (
     <Link
@@ -27,10 +46,16 @@ export function MovieCard({ movie }: { movie: MovieSummary }) {
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-neutral-800">
         {movie.posterUrl ? (
           <img
+            ref={imageRef}
             src={movie.posterUrl}
             alt={movie.title}
             loading="lazy"
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            decoding="async"
+            onLoad={() => setLoaded(true)}
+            onError={() => setLoaded(true)}
+            className={`h-full w-full object-cover transition-[opacity,transform] duration-500 group-hover:scale-105 ${
+              loaded ? 'opacity-100' : 'opacity-0'
+            }`}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center px-3 text-center">

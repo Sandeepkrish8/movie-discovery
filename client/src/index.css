@@ -21,3 +21,22 @@ body {
   outline: 2px solid #f59e0b;
   outline-offset: 2px;
 }
+
+/**
+ * Respect the operating system's reduced-motion setting.
+ *
+ * The app uses pulsing skeletons, hover scale on posters and fade-in on image
+ * load. All of it is decorative, so a user who has asked their OS for less
+ * motion — for vestibular reasons, or on a low-power device — should not get
+ * any of it. Content still appears; it just stops animating.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
