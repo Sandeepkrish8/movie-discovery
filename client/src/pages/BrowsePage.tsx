@@ -12,9 +12,10 @@ import { recallScroll, rememberBrowseUrl, rememberScroll } from '../lib/browseSt
 
 export function BrowsePage() {
   /**
-   * The URL is the single source of truth for search, genre and sort. That is
-   * what makes the back button work, makes a filtered view shareable as a link,
-   * and lets the detail page return the user to exactly the results they left.
+   * The URL is the single source of truth for search, genre, year and sort.
+   * That is what makes the back button work, makes a filtered view shareable as
+   * a link, and lets the detail page return the user to exactly the results
+   * they left.
    */
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -22,6 +23,8 @@ export function BrowsePage() {
   const q = searchParams.get('q') ?? '';
   const genreParam = searchParams.get('genre');
   const genre = genreParam ? Number(genreParam) : undefined;
+  const yearParam = searchParams.get('year');
+  const year = yearParam ? Number(yearParam) : undefined;
   const sort = searchParams.get('sort') ?? 'popularity.desc';
 
   // Local input state so typing feels instant; the URL updates on the debounce.
@@ -64,10 +67,11 @@ export function BrowsePage() {
     isFetchingNextPage,
     refetch,
     isFetching,
-  } = useMovies({ q, genre, sort });
+  } = useMovies({ q, genre, year, sort });
 
   const movies = data?.pages.flatMap((page) => page.items) ?? [];
   const totalResults = data?.pages[0]?.totalResults ?? 0;
+  const isSearchMode = data?.pages[0]?.meta.mode === 'search';
   const sortIsPageScoped = data?.pages[0]?.meta.sortScope === 'page';
 
   /**
@@ -140,12 +144,14 @@ export function BrowsePage() {
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  const hasActiveFilters = Boolean(q || genre || year);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight text-white">Discover movies</h1>
         <p className="mt-1 text-sm text-neutral-400">
-          Browse by genre, or search for something specific.
+          Browse by genre and year, or search for something specific.
         </p>
       </header>
 
@@ -163,10 +169,13 @@ export function BrowsePage() {
 
         <FilterBar
           genre={genre}
+          year={year}
           sort={sort}
           onGenreChange={(value) => updateParam('genre', value ? String(value) : undefined)}
+          onYearChange={(value) => updateParam('year', value ? String(value) : undefined)}
           onSortChange={(value) => updateParam('sort', value)}
           sortIsPageScoped={sortIsPageScoped}
+          genreIsUnavailable={isSearchMode}
           disabled={isLoading}
         />
 
@@ -193,9 +202,11 @@ export function BrowsePage() {
         <StateMessage
           title="No movies found"
           description={
-            q
-              ? `Nothing matched "${q}". Try a different title or clear the filters.`
-              : 'No movies match these filters. Try widening your selection.'
+            hasActiveFilters
+              ? q
+                ? `Nothing matched "${q}". Try a different title, or widen the year filter.`
+                : 'No movies match these filters. Try a different genre or year.'
+              : 'No movies came back. Please try again.'
           }
         />
       )}

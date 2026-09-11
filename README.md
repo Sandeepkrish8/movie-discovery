@@ -1,7 +1,7 @@
 # Movie Discovery
 
-A full-stack movie discovery application. Browse by genre, search, sort, page through large
-result sets, and keep a wishlist that survives closing the app.
+A full-stack movie discovery application. Browse by genre and release year, search, sort, page
+through large result sets, and keep a wishlist that survives closing the app.
 
 | | |
 |---|---|
@@ -178,7 +178,7 @@ All responses use this application's own shape, never TMDB's.
 |---|---|---|
 | `GET` | `/api/health` | Uptime, database state, cache size |
 | `GET` | `/api/genres` | Cached 7 days |
-| `GET` | `/api/movies` | `q`, `genre`, `sort`, `page`. Cached 5 minutes |
+| `GET` | `/api/movies` | `q`, `genre`, `year`, `sort`, `page`. Cached 5 minutes |
 | `GET` | `/api/movies/:id` | Cached 24 hours |
 | `GET` | `/api/wishlist` | Requires `x-device-id` header |
 | `POST` | `/api/wishlist` | Idempotent upsert |

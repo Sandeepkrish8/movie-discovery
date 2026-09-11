@@ -6,6 +6,7 @@ import type { MovieDetail, MovieSummary, Paginated } from '../types';
 export interface MovieQueryParams {
   q?: string;
   genre?: number;
+  year?: number;
   sort: string;
 }
 
@@ -14,8 +15,8 @@ export interface MovieQueryParams {
  *
  * Three things happen here that matter for the brief:
  *
- *  - queryKey includes every parameter, so changing genre or sort is a NEW
- *    query rather than a mutation of the old one. React Query keeps the
+ *  - queryKey includes every parameter, so changing genre, year or sort is a
+ *    NEW query rather than a mutation of the old one. React Query keeps the
  *    previous data on screen while the new page loads instead of flashing empty.
  *
  *  - `signal` is forwarded to axios. When the user types again mid-request, the
@@ -24,13 +25,13 @@ export interface MovieQueryParams {
  *  - getNextPageParam reads `hasMore` from our own response shape, so the
  *    component never does pagination arithmetic.
  */
-export function useMovies({ q, genre, sort }: MovieQueryParams) {
+export function useMovies({ q, genre, year, sort }: MovieQueryParams) {
   return useInfiniteQuery({
-    queryKey: ['movies', { q: q ?? '', genre: genre ?? null, sort }],
+    queryKey: ['movies', { q: q ?? '', genre: genre ?? null, year: year ?? null, sort }],
     initialPageParam: 1,
     queryFn: async ({ pageParam, signal }) => {
       const { data } = await api.get<Paginated<MovieSummary>>('/movies', {
-        params: { q: q || undefined, genre, sort, page: pageParam },
+        params: { q: q || undefined, genre, year, sort, page: pageParam },
         signal,
       });
       return data;

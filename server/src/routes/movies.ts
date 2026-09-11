@@ -27,6 +27,8 @@ type SortOption = (typeof SORT_OPTIONS)[number];
 const listQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
   genre: z.coerce.number().int().positive().optional(),
+  /** Release year. 1874 is the earliest film TMDB catalogues. */
+  year: z.coerce.number().int().min(1874).max(2100).optional(),
   sort: z.enum(SORT_OPTIONS).default('popularity.desc'),
   page: z.coerce.number().int().min(1).max(500).default(1),
 });
@@ -58,14 +60,15 @@ function sortInMemory(items: MovieSummary[], sort: SortOption): MovieSummary[] {
 }
 
 /**
- * GET /api/movies?q=&genre=&sort=&page=
+ * GET /api/movies?q=&genre=&year=&sort=&page=
  *
  * Two upstream modes behind one endpoint:
  *
- *   - No search text -> /discover/movie, which supports genre filtering and
- *     true global sorting across the entire catalogue.
+ *   - No search text -> /discover/movie, which supports genre and year
+ *     filtering and true global sorting across the entire catalogue.
  *   - Search text    -> /search/movie, which ranks by TMDB's own relevance and
- *     IGNORES sort_by and with_genres entirely.
+ *     IGNORES sort_by and with_genres. It does honour primary_release_year, so
+ *     the year filter still narrows a search; the genre filter cannot.
  *
  * That asymmetry is a real constraint of the upstream API, not something we can
  * design away. Rather than silently pretending the sort applied, the response
@@ -86,16 +89,19 @@ moviesRouter.get('/', async (req, res, next) => {
     });
   }
 
-  const { q, genre, sort, page } = parsed.data;
+  const { q, genre, year, sort, page } = parsed.data;
   const isSearch = Boolean(q);
 
   try {
-    const key = cacheKey('movies', { q, genre, sort, page });
+    const key = cacheKey('movies', { q, genre, year, sort, page });
 
     const payload = await cached<Paginated<MovieSummary>>(key, TTL.SEARCH, async () => {
       const endpoint = isSearch ? '/search/movie' : '/discover/movie';
 
       const params: Record<string, unknown> = { page, include_adult: false };
+
+      // Supported by both endpoints, so the year filter works while searching.
+      if (year) params.primary_release_year = year;
 
       if (isSearch) {
         params.query = q;
